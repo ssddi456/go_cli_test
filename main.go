@@ -14,7 +14,7 @@ func execAndReadStdout(cmd *exec.Cmd) string {
 
 	stdout, err := cmd.Output()
 	if err != nil {
-		log.Fatal("exec command failed, cmd ", cmd.String(), " error ", err)
+		log.Print("exec command failed, cmd ", cmd.String(), " error ", err)
 	}
 
 	return string(stdout)
@@ -37,6 +37,21 @@ func checkEnv() {
 
 }
 
+func checkEnvMac() {
+
+	whereChoco := execAndReadStdout(exec.Command("which", "choco"))
+	log.Printf("whereChoco %s", whereChoco)
+
+	wherePython := execAndReadStdout(exec.Command("which", "python"))
+	log.Printf("wherePython %s", wherePython)
+
+	whereFlutter := execAndReadStdout(exec.Command("which", "flutter"))
+	log.Printf("whereflutter %s", whereFlutter)
+
+	whereBrew := execAndReadStdout(exec.Command("which", "brew"))
+	log.Printf("whereBrew %s", whereBrew)
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "greet",
@@ -46,8 +61,10 @@ func main() {
 
 			if runtime.GOOS == "windows" {
 				checkEnv()
-
+			} else if runtime.GOOS == "darwin" {
+				checkEnvMac()
 			} else {
+				log.Fatal("unsupport platform")
 			}
 			return nil
 		},
