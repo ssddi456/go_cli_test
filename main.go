@@ -1,54 +1,97 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 )
 
-func execAndReadStdout(cmd *exec.Cmd) string {
+func execAndReadStderr(cmd *exec.Cmd) (string, error) {
+	var errbuf bytes.Buffer
+	cmd.Stderr = &errbuf
 
-	stdout, err := cmd.Output()
+	err := cmd.Run()
 	if err != nil {
 		log.Print("exec command failed, cmd ", cmd.String(), " error ", err)
 	}
+	return errbuf.String(), err
+}
 
-	return string(stdout)
+func execAndReadStdout(cmd *exec.Cmd) (string, error) {
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Print("exec command failed, cmd ", cmd.String(), " error ", err)
+		// return "", err
+	}
+
+	return string(stdout), err
+}
+
+func downloadFlutterw() {
+
+}
+
+type checkRes struct {
+	WhereChoco    string `json:"whereChoco"`
+	ChocoVersion  string `json:"chocoVersion"`
+	WherePython   string `json:"wherePython"`
+	PythonVersion string `json:"pythonVersion"`
+	SystemPath    string `json:"systemPath"`
 }
 
 // 检查环境变量
-func checkEnv() {
+func checkEnv() checkRes {
+	whereChoco, _ := execAndReadStdout(exec.Command("where", "choco"))
+	chocoVersion, _ := execAndReadStdout(exec.Command("choco", "-v"))
+	// log.Printf("whereChoco %s", whereChoco)
 
-	whereChoco := execAndReadStdout(exec.Command("where", "choco"))
-	log.Printf("whereChoco %s", whereChoco)
+	wherePython, _ := execAndReadStdout(exec.Command("where", "python"))
+	// log.Printf("wherePython %s", wherePython)
+	wherePython = strings.TrimSpace(wherePython)
 
-	wherePython := execAndReadStdout(exec.Command("where", "python"))
-	log.Printf("wherePython %s", wherePython)
+	pythonVersion, _ := execAndReadStderr(exec.Command("python", "--version"))
+	pythonVersion = strings.SplitN(strings.TrimSpace(pythonVersion), " ", 2)[1]
 
-	whereFlutter := execAndReadStdout(exec.Command("where", "flutter"))
-	log.Printf("whereflutter %s", whereFlutter)
+	// log.Printf("pythonVersion %s", pythonVersion)
+	systemPath := os.Getenv("PATH")
 
-	whereBrew := execAndReadStdout(exec.Command("where", "brew"))
-	log.Printf("whereBrew %s", whereBrew)
+	res := checkRes{
+		whereChoco,
+		chocoVersion,
+		wherePython,
+		pythonVersion,
+		systemPath,
+	}
+	return res
+}
 
+func doctor() {
+	res := checkEnv()
+	jsonBytes, _ := json.MarshalIndent(res, "", " ")
+
+	fmt.Println("please post this doct info to maintainers")
+	fmt.Println(string(jsonBytes))
 }
 
 func checkEnvMac() {
 
-	whereChoco := execAndReadStdout(exec.Command("which", "choco"))
+	whereChoco, _ := execAndReadStdout(exec.Command("which", "choco"))
 	log.Printf("whereChoco %s", whereChoco)
 
-	wherePython := execAndReadStdout(exec.Command("which", "python"))
+	wherePython, _ := execAndReadStdout(exec.Command("which", "python"))
 	log.Printf("wherePython %s", wherePython)
 
-	whereFlutter := execAndReadStdout(exec.Command("which", "flutter"))
+	whereFlutter, _ := execAndReadStdout(exec.Command("which", "flutter"))
 	log.Printf("whereflutter %s", whereFlutter)
 
-	whereBrew := execAndReadStdout(exec.Command("which", "brew"))
+	whereBrew, _ := execAndReadStdout(exec.Command("which", "brew"))
 	log.Printf("whereBrew %s", whereBrew)
 }
 
@@ -60,7 +103,9 @@ func main() {
 			fmt.Println("Hello friend!")
 
 			if runtime.GOOS == "windows" {
-				checkEnv()
+				jsonBytes, _ := json.MarshalIndent(checkEnv(), "", " ")
+
+				fmt.Println(string(jsonBytes))
 			} else if runtime.GOOS == "darwin" {
 				checkEnvMac()
 			} else {
